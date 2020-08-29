@@ -1,0 +1,102 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+author: "SR"
+date: "8/29/2020"
+output: html_document
+keep_md: true
+---
+
+## Loading and preprocessing the data
+
+Code to load data and process/transform the data into a format suitable for analysis
+
+```{r echo = TRUE}
+rawdata <- read.csv("activity.csv", header = TRUE)
+totsteps <- aggregate(steps~date, data = rawdata, sum, na.rm = TRUE)
+head(totsteps)
+```
+
+## What is mean total number of steps taken per day?
+
+Histogram of the total number of steps taken each day
+
+```{r echo = TRUE}
+hist(totsteps$steps, col = "red", main = "Total number of steps per day", xlab = "Steps", breaks = 10)
+```
+
+The mean and median total number of steps taken per day
+
+```{r echo = TRUE}
+mean(totsteps$steps)
+median(totsteps$steps)
+```
+
+## What is the average daily activity pattern?
+
+Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r echo = TRUE}
+avgsteps <- aggregate(steps~interval,data = rawdata, mean, na.rm = TRUE)
+plot(steps~interval, data = avgsteps, type = "l", main = "Time series plot", xlab = "5-minute interval", ylab = "Average steps")
+```
+
+The 5-minute interval, on average across all the days in the dataset, that contains the maximum number of steps
+
+```{r echo = TRUE}
+avgsteps[which.max(avgsteps$steps),]$interval
+```
+
+## Imputing missing values
+
+The total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r echo = TRUE}
+sum(is.na(rawdata$steps))
+```
+
+Code for filling in all of the missing values in the dataset using the mean and a new dataset that is equal to the original dataset but with the missing data filled in
+
+```{r echo = TRUE}
+library(magrittr)
+library(dplyr)
+
+replacena <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+newdata <- rawdata%>% group_by(interval) %>% mutate(steps= replacena(steps))
+newtotsteps <- aggregate(steps~date, data = newdata, sum, na.rm = TRUE)
+head(newtotsteps)
+```
+
+Histogram of the total number of steps taken each day using new data set with missing values replaced by mean.
+
+```{r echo = TRUE}
+hist(newtotsteps$steps, col = "red", main = "Total number of steps per day", xlab = "Steps", breaks = 10)
+```
+
+The mean and median total number of steps taken per day for new data
+
+```{r echo = TRUE}
+mean(newtotsteps$steps)
+median(newtotsteps$steps)
+```
+
+The mean is the same as before but the median is slightly different from the previous value and the same as the mean
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Code for a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day
+
+```{r echo = TRUE}
+weeklydata <- newdata
+weeklydata$date <- as.Date(strptime(weeklydata$date, format="%Y-%m-%d")) 
+weeklydata$day <-  factor(ifelse(as.POSIXlt(weeklydata$date)$wday %in% c(0,6), 'weekend', 'weekday'))
+```
+
+Panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+
+```{r echo = TRUE}
+avgweeklysteps <- aggregate(steps ~ interval + day, data = weeklydata, mean)
+library(lattice)
+xyplot(steps~interval|factor(day), data = avgweeklysteps, aspect = 1/2, type = "l", xlab = "5-minute interval", ylab = "Average steps", main = "Time series plot")
+```
+
